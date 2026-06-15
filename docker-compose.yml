@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.10.2
+    container_name: arabic_se_es
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    networks:
+      - arabic_se_net
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: arabic_se_pg
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=admin
+      - POSTGRES_DB=arabic_se
+    ports:
+      - "5433:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    networks:
+      - arabic_se_net
+
+  redis:
+    image: redis:7-alpine
+    container_name: arabic_se_redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - arabic_se_net
+
+volumes:
+  es_data:
+  pg_data:
+  redis_data:
+
+networks:
+  arabic_se_net:
+    driver: bridge

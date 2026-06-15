@@ -1,0 +1,535 @@
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 24px;
+  background-color: var(--background);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  height: 70px;
+  width: 100%;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex: 1;
+}
+
+.logo {
+  font-size: 2rem;
+  font-weight: 900;
+  color: var(--primary);
+  text-decoration: none;
+  transition: transform 0.2s;
+  user-select: none;
+}
+
+.logo:hover {
+  transform: scale(1.05);
+}
+
+.searchForm {
+  display: flex;
+  width: 100%;
+  max-width: 500px;
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background-color: var(--input-bg);
+  padding: 4px 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.searchForm:hover, .searchForm:focus-within {
+  box-shadow: 0 1px 6px rgba(32, 33, 36, 0.15);
+  border-color: var(--primary);
+}
+
+.searchInput {
+  flex: 1;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 1rem;
+  color: var(--foreground);
+  font-family: inherit;
+  padding: 8px 0;
+}
+
+.searchButton {
+  background: none;
+  border: none;
+  color: var(--primary);
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 0.95rem;
+  padding: 0 5px;
+  transition: opacity 0.2s;
+}
+
+.searchButton:hover {
+  opacity: 0.8;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.loginButton {
+  padding: 8px 20px;
+  border-radius: 20px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  background-color: transparent;
+  color: var(--primary);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  display: inline-block;
+  text-align: center;
+}
+
+.loginButton:hover {
+  background-color: var(--hover-bg);
+  border-color: var(--primary);
+}
+
+.registerButton {
+  padding: 8px 20px;
+  border-radius: 20px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  background-color: var(--primary);
+  color: #ffffff;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  display: inline-block;
+  text-align: center;
+}
+
+.registerButton:hover {
+  background-color: var(--primary-hover);
+}
+
+/* User profile section */
+.userSection {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.profileButton {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px;
+  border-radius: 24px;
+  border: 1px solid var(--border);
+  background-color: var(--input-bg);
+  cursor: pointer;
+  transition: all 0.2s;
+  color: var(--foreground);
+  user-select: none;
+}
+
+.profileButton:hover {
+  background-color: var(--hover-bg);
+  border-color: var(--primary);
+}
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: var(--primary);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.userName {
+  font-weight: 500;
+  font-size: 0.95rem;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dropdownIcon {
+  font-size: 0.6rem;
+  color: var(--secondary-text);
+  transition: transform 0.2s;
+}
+
+.dropdownIconOpen {
+  transform: rotate(180deg);
+}
+
+/* Dropdown Menu */
+.dropdownMenu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0; /* Align to the left edge so it extends to the right (RTL context) */
+  background-color: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  min-width: 220px;
+  padding: 8px 0;
+  display: flex;
+  flex-direction: column;
+  animation: slideDown 0.2s ease-out;
+  z-index: 200;
+}
+
+.dropdownHeader {
+  padding: 10px 16px;
+  font-size: 0.85rem;
+  color: var(--secondary-text);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 6px;
+  word-break: break-all;
+}
+
+.dropdownItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  font-size: 0.95rem;
+  color: var(--foreground);
+  text-align: right;
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-family: inherit;
+  transition: background-color 0.2s;
+  width: 100%;
+  text-decoration: none;
+}
+
+.dropdownItem:hover {
+  background-color: var(--hover-bg);
+}
+
+.dropdownItemAdmin {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.dropdownItemAdmin:hover {
+  background-color: rgba(26, 115, 232, 0.08);
+}
+
+.dropdownDivider {
+  height: 1px;
+  background-color: var(--border);
+  margin: 6px 0;
+}
+
+.logoutButton {
+  color: #d93025;
+  font-weight: 500;
+}
+
+.logoutButton:hover {
+  background-color: rgba(217, 48, 37, 0.08);
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+  .header {
+    padding: 10px 16px;
+    height: auto;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .headerRight {
+    width: 100%;
+    flex: none;
+    justify-content: space-between;
+  }
+  .searchForm {
+    order: 3;
+    width: 100%;
+    max-width: none;
+    margin-top: 5px;
+  }
+  .userName {
+    display: none;
+  }
+}
+
+.themeToggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background-color: var(--input-bg);
+  color: var(--foreground);
+  cursor: pointer;
+  transition: all 0.25s ease;
+  padding: 0;
+  outline: none;
+  flex-shrink: 0;
+}
+
+.themeToggle:hover {
+  background-color: var(--hover-bg);
+  color: var(--primary);
+  border-color: var(--primary);
+  transform: rotate(20deg);
+}
+
+.themeToggle svg {
+  display: block;
+}
+
+/* Search Suggestions dropdown styling */
+.searchContainer {
+  position: relative;
+  width: 100%;
+  max-width: 500px;
+}
+
+.searchFormWithSuggestions {
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+  box-shadow: 0 1px 3px rgba(32, 33, 36, 0.1) !important;
+}
+
+.suggestionsList {
+  list-style: none;
+  width: 100%;
+  background-color: var(--input-bg);
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 24px 24px;
+  position: absolute;
+  top: 100%;
+  right: 0;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+  z-index: 150;
+  padding: 10px 0;
+  margin: 0;
+  overflow: hidden;
+}
+
+.suggestionItem {
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  height: 36px;
+  cursor: pointer;
+  color: var(--foreground);
+  font-size: 0.95rem;
+  transition: background-color 0.2s;
+  text-align: right;
+  font-family: inherit;
+}
+
+.suggestionItem:hover {
+  background-color: var(--hover-bg);
+}
+
+.suggestionIcon {
+  width: 14px;
+  height: 14px;
+  margin-left: 10px;
+  flex-shrink: 0;
+}
+
+/* Notification Bell & Dropdown */
+.bellContainer {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.bellButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background-color: var(--input-bg);
+  color: var(--foreground);
+  cursor: pointer;
+  transition: all 0.25s ease;
+  padding: 0;
+  outline: none;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.bellButton:hover {
+  background-color: var(--hover-bg);
+  color: var(--primary);
+  border-color: var(--primary);
+  transform: translateY(-1px);
+}
+
+.badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  background-color: #ef4444;
+  color: #ffffff;
+  border-radius: 50%;
+  font-size: 0.7rem;
+  font-weight: 700;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--background);
+}
+
+.notifDropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0; /* Aligns to left in RTL */
+  background-color: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  width: 320px;
+  max-height: 400px;
+  overflow-y: auto;
+  z-index: 200;
+  animation: slideDown 0.2s ease-out;
+  display: flex;
+  flex-direction: column;
+}
+
+.notifHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  font-weight: 700;
+  color: var(--foreground);
+}
+
+.notifHeaderTitle {
+  font-size: 0.95rem;
+}
+
+.markAllReadBtn {
+  background: none;
+  border: none;
+  color: var(--primary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 0;
+}
+
+.markAllReadBtn:hover {
+  text-decoration: underline;
+}
+
+.notifList {
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.notifItem {
+  display: flex;
+  flex-direction: column;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background-color 0.2s;
+  text-align: right;
+  gap: 4px;
+}
+
+.notifItem:hover {
+  background-color: var(--hover-bg);
+}
+
+.notifUnread {
+  background-color: rgba(26, 115, 232, 0.04);
+}
+
+.notifUnread:hover {
+  background-color: rgba(26, 115, 232, 0.08);
+}
+
+.notifTitle {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--foreground);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.notifDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--primary);
+  display: inline-block;
+}
+
+.notifMessage {
+  font-size: 0.8rem;
+  color: var(--secondary-text);
+  line-height: 1.4;
+}
+
+.notifTime {
+  font-size: 0.7rem;
+  color: var(--secondary-text);
+  opacity: 0.8;
+  margin-top: 2px;
+}
+
+.notifEmpty {
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--secondary-text);
+  font-size: 0.9rem;
+}
+
+
+

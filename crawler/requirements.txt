@@ -1,0 +1,4 @@
+Scrapy==2.11.0
+elasticsearch==8.10.0
+scrapy-playwright==0.0.35
+playwright==1.40.0
