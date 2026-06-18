@@ -1,7 +1,27 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+
+// المفتاح السري الداخلي لإنشاء التوقيع
+// يجب أن يتطابق مع SOCIAL_AUTH_SECRET في backend/.env
+const SOCIAL_AUTH_SECRET = 'local-social-auth-secret-bayan-2024';
+
+// دالة لإنشاء توقيع HMAC-SHA256 باستخدام Web Crypto API
+async function createHmacSignature(message) {
+  const encoder = new TextEncoder();
+  const keyData = encoder.encode(SOCIAL_AUTH_SECRET);
+  const msgData = encoder.encode(message);
+
+  const cryptoKey = await window.crypto.subtle.importKey(
+    'raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+  );
+  const signatureBuffer = await window.crypto.subtle.sign('HMAC', cryptoKey, msgData);
+  // تحويل التوقيع إلى نص hex
+  return Array.from(new Uint8Array(signatureBuffer))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
 
 function AuthMockContent() {
   const searchParams = useSearchParams();
@@ -21,20 +41,27 @@ function AuthMockContent() {
     { name: 'مريم الجزائري', email: 'm.djazairi@facebook.com' }
   ];
 
-  const handleSelectAccount = (name, email) => {
-    if (window.opener) {
-      window.opener.postMessage({
-        type: 'social-auth-success',
-        user: {
-          full_name: name,
-          email: email,
-          provider: provider
-        }
-      }, window.location.origin);
-      window.close();
-    } else {
+  const handleSelectAccount = async (name, email) => {
+    if (!window.opener) {
       alert("عذراً، لم يتم العثور على الصفحة الأب. يرجى فتح هذه الصفحة عبر زر الدخول الاجتماعي.");
+      return;
     }
+    // إنشاء رسالة مُوقَّعة تحتوي على timestamp لمنع إعادة الاستخدام (Replay Attack)
+    const timestamp = Date.now();
+    const message = `${email}|${provider}|${timestamp}`;
+    const signed_token = await createHmacSignature(message);
+
+    window.opener.postMessage({
+      type: 'social-auth-success',
+      user: {
+        full_name: name,
+        email: email,
+        provider: provider,
+        signed_token: signed_token,
+        timestamp: timestamp
+      }
+    }, window.location.origin);
+    window.close();
   };
 
   const handleCustomSubmit = (e) => {

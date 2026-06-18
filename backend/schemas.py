@@ -12,6 +12,8 @@ class SocialAuthInput(BaseModel):
     full_name: str
     email: EmailStr
     provider: str
+    signed_token: str  # HMAC-SHA256 signature to verify the request is internal
+    timestamp: int     # Unix timestamp in milliseconds (for replay attack prevention)
 
 
 class UserResponse(BaseModel):

@@ -9,6 +9,10 @@ import subprocess
 import os
 from typing import List, Union, Optional
 
+# تحميل ملف .env بشكل صريح لضمان قراءة جميع المتغيرات البيئية
+from dotenv import load_dotenv
+load_dotenv()
+
 import models
 import schemas
 import auth
@@ -416,10 +420,49 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
 
 @app.post("/auth/social", response_model=schemas.Token)
 def social_auth(data: schemas.SocialAuthInput, db: Session = Depends(database.get_db)):
-    # Check if user with email already exists
+    """
+    تسجيل الدخول الاجتماعي الداخلي المؤمَّن بتوقيع HMAC-SHA256.
+    يرفض أي طلب لا يحمل توقيعاً صحيحاً أو منتهي الصلاحية (أقدم من 5 دقائق).
+    """
+    import hmac as _hmac
+    import hashlib
+    import time
+
+    # 1. استرجاع المفتاح السري من متغيرات البيئة
+    social_secret = os.getenv("SOCIAL_AUTH_SECRET", "")
+    if not social_secret:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="خدمة المصادقة الاجتماعية غير مُهيَّأة."
+        )
+
+    # 2. التحقق من صلاحية التوقيع (لم يمضِ عليه أكثر من 5 دقائق)
+    timestamp_ms = data.timestamp  # timestamp بالميلي ثانية من الـ frontend
+    now_ms = int(time.time() * 1000)
+    age_seconds = (now_ms - timestamp_ms) / 1000
+    if age_seconds > 300 or age_seconds < -30:  # 5 دقائق كحد أقصى
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="انتهت صلاحية طلب تسجيل الدخول. يرجى المحاولة مرة أخرى."
+        )
+
+    # 3. إعادة بناء الرسالة الأصلية والتحقق من التوقيع
+    expected_message = f"{data.email}|{data.provider}|{timestamp_ms}"
+    expected_sig = _hmac.new(
+        social_secret.encode("utf-8"),
+        expected_message.encode("utf-8"),
+        hashlib.sha256
+    ).hexdigest()
+
+    if not _hmac.compare_digest(expected_sig, data.signed_token):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="فشل التحقق من هوية الطلب. يُرجى استخدام زر تسجيل الدخول الرسمي."
+        )
+
+    # 4. بعد التحقق الناجح: إنشاء المستخدم أو تسجيل دخوله
     user = db.query(models.User).filter(models.User.email == data.email).first()
     if not user:
-        # Create user with a random secure password
         import secrets
         random_password = secrets.token_urlsafe(16)
         hashed_password = auth.get_password_hash(random_password)
@@ -432,8 +475,7 @@ def social_auth(data: schemas.SocialAuthInput, db: Session = Depends(database.ge
         db.add(user)
         db.commit()
         db.refresh(user)
-    
-    # Generate JWT token
+
     access_token = auth.create_access_token(data={"sub": user.email})
     return {"access_token": access_token, "token_type": "bearer"}
 

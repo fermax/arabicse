@@ -25,9 +25,9 @@ export default function LoginPage() {
       if (event.origin !== window.location.origin) return;
       
       if (event.data?.type === 'social-auth-success') {
-        const { full_name, email: socialEmail, provider } = event.data.user;
+        const { full_name, email: socialEmail, provider, signed_token, timestamp } = event.data.user;
         setSubmitting(true);
-        const success = await socialLogin(full_name, socialEmail, provider);
+        const success = await socialLogin(full_name, socialEmail, provider, signed_token, timestamp);
         setSubmitting(false);
         if (success) {
           router.push('/');

@@ -117,7 +117,7 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const socialLogin = async (fullName, email, provider) => {
+  const socialLogin = async (fullName, email, provider, signed_token, timestamp) => {
     setError(null);
     try {
       const res = await fetch(`${API_BASE}/auth/social`, {
@@ -128,7 +128,9 @@ export function AuthProvider({ children }) {
         body: JSON.stringify({
           full_name: fullName,
           email: email,
-          provider: provider
+          provider: provider,
+          signed_token: signed_token,
+          timestamp: timestamp
         })
       });
 
