@@ -1,8 +1,44 @@
 import aiohttp
 import json
 import re
+import os
+import logging
 from sqlalchemy.orm import Session
 import models
+from dotenv import load_dotenv
+load_dotenv()
+
+logger = logging.getLogger(__name__)
+
+# تشفير/فك تشفير مفاتيح AI API باستخدام Fernet
+def _get_fernet():
+    """Returns a Fernet instance if SETTINGS_ENCRYPTION_KEY is set, else None."""
+    key = os.getenv("SETTINGS_ENCRYPTION_KEY", "")
+    if not key:
+        return None
+    try:
+        from cryptography.fernet import Fernet
+        return Fernet(key.encode() if isinstance(key, str) else key)
+    except Exception as e:
+        logger.warning(f"Fernet init failed: {e} — AI keys stored as plaintext.")
+        return None
+
+def encrypt_api_key(plain_key: str) -> str:
+    """تشفير مفتاح API قبل الحفظ في قاعدة البيانات."""
+    f = _get_fernet()
+    if f and plain_key:
+        return f.encrypt(plain_key.encode()).decode()
+    return plain_key
+
+def decrypt_api_key(stored_key: str) -> str:
+    """فك تشفير مفتاح API عند القراءة من قاعدة البيانات."""
+    f = _get_fernet()
+    if f and stored_key:
+        try:
+            return f.decrypt(stored_key.encode()).decode()
+        except Exception:
+            return stored_key  # backward compat: key was not encrypted yet
+    return stored_key
 
 # Default model names for each provider
 DEFAULT_MODELS = {
@@ -20,7 +56,8 @@ def get_active_settings(db: Session):
     model_setting = db.query(models.SystemSetting).filter(models.SystemSetting.key == "ai_model").first()
     
     provider = provider_setting.value if provider_setting else "mock"
-    api_key = key_setting.value if key_setting else ""
+    raw_key = key_setting.value if key_setting else ""
+    api_key = decrypt_api_key(raw_key)  # فك تشفير المفتاح عند القراءة
     model_name = model_setting.value if model_setting else DEFAULT_MODELS.get(provider, "mock-model")
     
     if not model_name or model_name == "mock-model":

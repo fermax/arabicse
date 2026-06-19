@@ -8,10 +8,15 @@ from sqlalchemy.orm import Session
 from database import get_db
 import models
 import os
-import schemas
+from dotenv import load_dotenv
+load_dotenv()
 
-# Secret key to encode the JWT token (In production, use env variable)
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-very-secret-key-for-jwt-change-me")
+# التحقق من وجود مفتاح JWT قوي وإلزامي عند بدء تشغيل الخادم
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "")
+if not SECRET_KEY:
+    raise RuntimeError("خطأ حرج: JWT_SECRET_KEY غير معيّن في .env — الخادم لن ينطلق لأسباب أمنية.")
+if len(SECRET_KEY) < 32:
+    raise RuntimeError("خطأ حرج: JWT_SECRET_KEY قصير جداً (يجب أن يكون 32 حرفاً على الأقل).")
 ALGORITHM = "HS256"
 try:
     ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 60 * 24 * 7))

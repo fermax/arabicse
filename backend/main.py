@@ -1,17 +1,30 @@
-from fastapi import FastAPI, Query, Depends, HTTPException, status, BackgroundTasks, UploadFile, File, Form
+from fastapi import FastAPI, Query, Depends, HTTPException, status, BackgroundTasks, UploadFile, File, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.responses import JSONResponse
 from elasticsearch import AsyncElasticsearch
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 import uvicorn
 import subprocess
 import os
+import logging
 from typing import List, Union, Optional
 
 # تحميل ملف .env بشكل صريح لضمان قراءة جميع المتغيرات البيئية
 from dotenv import load_dotenv
 load_dotenv()
+
+# إعداد نظام التسجيل الداخلي (Logging)
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# إعداد Rate Limiter لحماية النقاط الحساسة
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
+limiter = Limiter(key_func=get_remote_address)
 
 import models
 import schemas
@@ -21,13 +34,27 @@ import ai_service
 
 
 app = FastAPI(title="Arabic Secondary Edu Search API")
+app.state.limiter = limiter
 
-# Configure CORS
+# معالج خطأ تجاوز حد الطلبات
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    return JSONResponse(
+        status_code=429,
+        content={"detail": "لقد تجاوزت الحد المسموح من الطلبات. يرجى الانتظار قليلاً ثم المحاولة مرة أخرى."}
+    )
+
+# تقييد CORS على النطاقات المعتمدة فقط
+ALLOWED_ORIGINS = os.getenv(
+    "ALLOWED_ORIGINS",
+    "http://localhost:4000,http://localhost:3000"
+).split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # In production, restrict to frontend URL
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -389,10 +416,11 @@ async def search_documents(
 
 # --- Auth Routes ---
 @app.post("/register", response_model=schemas.UserResponse)
-def register(user: schemas.UserCreate, db: Session = Depends(database.get_db)):
+@limiter.limit("3/minute")  # منع إنشاء حسابات وهمية بالجملة
+def register(request: Request, user: schemas.UserCreate, db: Session = Depends(database.get_db)):
     db_user = db.query(models.User).filter(models.User.email == user.email).first()
     if db_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
+        raise HTTPException(status_code=400, detail="هذا البريد الإلكتروني مسجّل مسبقاً.")
     
     hashed_password = auth.get_password_hash(user.password)
     new_user = models.User(
@@ -406,12 +434,13 @@ def register(user: schemas.UserCreate, db: Session = Depends(database.get_db)):
     return new_user
 
 @app.post("/login", response_model=schemas.Token)
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(database.get_db)):
+@limiter.limit("5/minute")  # منع هجمات Brute Force على كلمات المرور
+def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(database.get_db)):
     user = db.query(models.User).filter(models.User.email == form_data.username).first()
     if not user or not auth.verify_password(form_data.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
+            detail="بريد إلكتروني أو كلمة مرور غير صحيحة.",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
@@ -688,9 +717,10 @@ def start_crawler(admin_user: models.User = Depends(require_admin)):
         
         return {"status": "active", "message": "تم تشغيل الزاحف بنجاح في الخلفية."}
     except Exception as e:
+        logger.error(f"Crawler start failed: {e}")
         raise HTTPException(
             status_code=500,
-            detail=f"فشل في تشغيل الزاحف: {str(e)}"
+            detail="حدث خطأ داخلي عند محاولة تشغيل الزاحف. يرجى التحقق من سجلات الخادم."
         )
 
 @app.post("/api/admin/crawler/stop")
@@ -783,9 +813,10 @@ async def get_admin_documents(q: str = None, limit: int = 100, skip: int = 0, ad
 async def delete_admin_document(doc_id: str, admin_user: models.User = Depends(require_admin)):
     try:
         await es.delete(index="documents", id=doc_id)
-        return {"message": "Document deleted successfully"}
+        return {"message": "تم حذف المستند بنجاح."}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to delete document: {e}")
+        logger.error(f"Document delete failed: {e}")
+        raise HTTPException(status_code=500, detail="حدث خطأ أثناء حذف المستند. يرجى المحاولة لاحقاً.")
 
 @app.post("/api/documents/upload", response_model=schemas.DocumentUploadResponse)
 async def upload_document(
@@ -807,12 +838,25 @@ async def upload_document(
             detail="عذراً، هذه الصلاحية مخصصة للأساتذة والمدراء فقط."
         )
 
-    # Read file
-    content = ""
+    # التحقق من حجم الملف (10MB حد أقصى)
+    MAX_FILE_SIZE = 10 * 1024 * 1024
     file_bytes = await file.read()
+    if len(file_bytes) > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=413,
+            detail="حجم الملف يتجاوز الحد المسموح وهو 10 ميغابايت."
+        )
+
+    content = ""
     filename_lower = file.filename.lower()
     
     if filename_lower.endswith(".pdf"):
+        # التحقق من Magic Bytes للتأكد أنه PDF حقيقي (وليس ملف خبيث بامتداد .pdf)
+        if not file_bytes.startswith(b'%PDF'):
+            raise HTTPException(
+                status_code=400,
+                detail="الملف ليس PDF حقيقياً. يرجى رفع ملف PDF صحيح."
+            )
         import io
         import pypdf
         try:
@@ -826,10 +870,15 @@ async def upload_document(
                     text_list.append(text)
             content = " ".join(text_list)
         except Exception as e:
-            print(f"Error parsing uploaded PDF: {e}")
+            logger.error(f"Error parsing uploaded PDF: {e}")
             content = ""
     else:
-        # Fallback for text files
+        # فقط ملفات النص العادي مسموح بها (.txt)
+        if not filename_lower.endswith(".txt"):
+            raise HTTPException(
+                status_code=400,
+                detail="نوع الملف غير مدعوم. يرجى رفع ملفات PDF أو TXT فقط."
+            )
         try:
             content = file_bytes.decode("utf-8", errors="ignore")
         except Exception:
@@ -1145,13 +1194,16 @@ def update_ai_settings_endpoint(
         if not key_setting:
             key_setting = models.SystemSetting(key="ai_api_key")
             db.add(key_setting)
-        key_setting.value = data.api_key
+        # تشفير المفتاح قبل الحفظ في قاعدة البيانات
+        key_setting.value = ai_service.encrypt_api_key(data.api_key)
         
     db.commit()
     return {"message": "تم تحديث إعدادات الذكاء الاصطناعي بنجاح."}
 
 @app.post("/api/ai/ask", response_model=schemas.AIAskResponse)
+@limiter.limit("15/minute")  # حماية رصيد AI API من الاستنزاف
 async def ask_ai_assistant_endpoint(
+    http_request: Request,
     request: schemas.AIAskRequest,
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
@@ -1222,7 +1274,9 @@ async def ask_ai_assistant_endpoint(
     return {"answer": answer, "references": references}
 
 @app.post("/api/ai/quiz/generate", response_model=schemas.QuizGenerateResponse)
+@limiter.limit("10/minute")  # توليد الاختبارات يستهلك الكثير من رصيد API
 async def generate_quiz_endpoint(
+    http_request: Request,
     request: schemas.QuizGenerateRequest,
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
