@@ -1203,8 +1203,8 @@ def update_ai_settings_endpoint(
 @app.post("/api/ai/ask", response_model=schemas.AIAskResponse)
 @limiter.limit("15/minute")  # حماية رصيد AI API من الاستنزاف
 async def ask_ai_assistant_endpoint(
-    http_request: Request,
-    request: schemas.AIAskRequest,
+    request: Request,
+    payload: schemas.AIAskRequest,
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
@@ -1213,7 +1213,7 @@ async def ask_ai_assistant_endpoint(
         query = {
             "query": {
                 "multi_match": {
-                    "query": request.question,
+                    "query": payload.question,
                     "fields": ["title^3", "content"],
                     "analyzer": "arabic"
                 }
@@ -1221,10 +1221,10 @@ async def ask_ai_assistant_endpoint(
         }
         
         filter_queries = []
-        if request.level:
-            filter_queries.append({"term": {"metadata.level": request.level}})
-        if request.branch:
-            filter_queries.append({"term": {"branch.keyword": request.branch}})
+        if payload.level:
+            filter_queries.append({"term": {"metadata.level": payload.level}})
+        if payload.branch:
+            filter_queries.append({"term": {"branch.keyword": payload.branch}})
             
         if filter_queries:
             query["post_filter"] = {
@@ -1255,7 +1255,7 @@ async def ask_ai_assistant_endpoint(
     ai_config = ai_service.get_active_settings(db)
     
     answer = await ai_service.generate_rag_answer(
-        question=request.question,
+        question=payload.question,
         docs=docs,
         provider=ai_config["provider"],
         api_key=ai_config["api_key"],
@@ -1276,21 +1276,21 @@ async def ask_ai_assistant_endpoint(
 @app.post("/api/ai/quiz/generate", response_model=schemas.QuizGenerateResponse)
 @limiter.limit("10/minute")  # توليد الاختبارات يستهلك الكثير من رصيد API
 async def generate_quiz_endpoint(
-    http_request: Request,
-    request: schemas.QuizGenerateRequest,
+    request: Request,
+    payload: schemas.QuizGenerateRequest,
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
     docs = []
-    topic = request.topic or "عام"
+    topic = payload.topic or "عام"
     
-    if request.document_id:
+    if payload.document_id:
         try:
-            doc_res = await es.get(index="documents", id=request.document_id)
+            doc_res = await es.get(index="documents", id=payload.document_id)
             if doc_res and doc_res.get("found"):
                 source = doc_res["_source"]
                 docs.append({
-                    "id": request.document_id,
+                    "id": payload.document_id,
                     "title": source.get("title", "مستند"),
                     "content": source.get("content", "")
                 })
@@ -1298,12 +1298,12 @@ async def generate_quiz_endpoint(
         except Exception as e:
             print(f"Error fetching document for quiz: {e}")
             
-    if not docs and request.topic:
+    if not docs and payload.topic:
         try:
             query = {
                 "query": {
                     "multi_match": {
-                        "query": request.topic,
+                        "query": payload.topic,
                         "fields": ["title^3", "content"],
                         "analyzer": "arabic"
                     }
