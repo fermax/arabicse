@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+import time
 import requests
 from elasticsearch import Elasticsearch
 
@@ -151,6 +152,15 @@ def validate_and_clean_data(data, original_url):
 
 def main():
     print("[*] بدء سكريبت التصنيف والفرز الليلي باستخدام ذكاء اصطناعي محلي...")
+    start_time = time.time()
+    
+    time_limit = None
+    if len(sys.argv) > 1:
+        try:
+            time_limit = int(sys.argv[1])
+            print(f"[+] تم ضبط مهلة تشغيل زمنية: {time_limit} ثانية.")
+        except ValueError:
+            pass
     
     # الاتصال بـ Elasticsearch
     try:
@@ -175,6 +185,11 @@ def main():
     success_count = 0
     
     for index, hit in enumerate(documents, 1):
+        # التحقق من انتهاء المهلة الزمنية
+        if time_limit and (time.time() - start_time) > time_limit:
+            print(f"\n[!] تم الوصول إلى الحد الزمني المسموح به ({time_limit} ثانية). إيقاف المعالجة مؤقتاً وحفظ التقدم...")
+            break
+            
         doc_id = hit["_id"]
         source = hit["_source"]
         
