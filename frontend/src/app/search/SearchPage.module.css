@@ -451,6 +451,23 @@
   background: #fadad6;
 }
 
+.deleteBtn {
+  background: #fdf2f2;
+  border: 1px solid #f8b4b4;
+  color: #9b1c1c;
+  padding: 4px 12px;
+  border-radius: 16px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 600;
+  transition: background 0.2s;
+  font-family: inherit;
+}
+
+.deleteBtn:hover {
+  background: #fde8e8;
+}
+
 /* Dark mode overrides for rate and verify */
 :global(.dark) {
   .rateBtn {
@@ -480,6 +497,14 @@
   }
   .verifyBtn:hover {
     background: rgba(234, 67, 53, 0.25);
+  }
+  .deleteBtn {
+    background: rgba(224, 86, 86, 0.15);
+    border-color: #f8b4b4;
+    color: #f8b4b4;
+  }
+  .deleteBtn:hover {
+    background: rgba(224, 86, 86, 0.25);
   }
 }
 

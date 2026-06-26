@@ -220,6 +220,29 @@ function SearchContent() {
     }
   };
 
+  const handleDelete = async (docId) => {
+    if (!token) return;
+    if (!confirm("هل أنت متأكد من رغبتك في حذف هذا المستند نهائياً من محرك البحث؟")) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/documents/${docId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (res.ok) {
+        setResults(prev => prev.filter(item => item.id !== docId));
+        alert("تم حذف المستند بنجاح.");
+      } else {
+        const errData = await res.json();
+        alert(`فشل حذف المستند: ${errData.detail || 'خطأ غير معروف'}`);
+      }
+    } catch (err) {
+      console.error("Error deleting document:", err);
+      alert("حدث خطأ أثناء الاتصال بالخادم لحذف المستند.");
+    }
+  };
+
   const formatDocType = (type) => {
     switch (type) {
       case 'lesson': return 'درس / ملخص';
@@ -465,6 +488,17 @@ function SearchContent() {
                                 🛡️ اعتماد
                               </button>
                             )
+                          )}
+
+                          {/* Delete Button for Admin */}
+                          {user?.role === 'admin' && (
+                            <button 
+                              onClick={() => handleDelete(item.id)} 
+                              className={styles.deleteBtn}
+                              title="حذف هذا المستند نهائياً"
+                            >
+                              🗑️ حذف
+                            </button>
                           )}
                         </div>
                       </div>
